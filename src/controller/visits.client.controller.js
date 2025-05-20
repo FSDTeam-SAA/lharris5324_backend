@@ -27,13 +27,41 @@ export const createVisit = async (req, res, next) => {
             });
         }
 
-        const isPaid = await Payment.findOne({ user: client }).select("status");
+        const isPaid = await Payment.find({ user: client })
+            .populate("plan")
+            .sort({ createdAt: -1 })
+            .lean();
 
-        if (!isPaid || !isPaid.status !== "completed") {
+        let date1 = new Date(isPaid[0].createdAt);
+        let currentDate = new Date();
+
+        if (isPaid[0].plan.pack === 'daily') {
+            date1.setDate(date1.getDate() + 1);
+        } else if (isPaid[0].plan.pack === 'weekly') {
+            date1.setDate(date1.getDate() + 7);
+        } else if (isPaid[0].plan.pack === 'monthly') {
+            date1.setDate(date1.getDate() + 30);
+        }
+
+        if (!isPaid || (isPaid[0].status === "completed" && isPaid[0].plan.pack === "per-patrol")) {
             return res.status(400).json({
                 status: false,
-                message: "Please make a payment before creating a visit."
+                message: "Your payment has expired. Please make a new payment."
             });
+        }
+
+        if (isPaid[0].status === "pending") {
+            return res.status(400).json({
+                status: false,
+                message: "Your payment is pending. Please wait for it to be completed before creating a visit."
+            });     
+        }
+
+        if(currentDate > date1) {
+            return res.status(400).json({
+                status: false,
+                message: "Your payment has expired. Please make a new payment."
+            });     
         }
 
         const visitData = await createVisitService(
