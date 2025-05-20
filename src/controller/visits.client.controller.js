@@ -2,6 +2,7 @@ import mongoose from "mongoose"
 import { Payment } from "../model/payment.model.js"
 import { Visit } from "../model/visit.model.js"
 import { createVisitService, getAllVisitsService, getCompletedVisitsWithIssuesService, getPastVisitsService, getUpcomingVisitsService, getVisits, getVisitsPagination, updateVisitService } from "../services/visit.services.js"
+import { UserPlan } from "../model/userPlan.models.js";
 
 export const createVisit = async (req, res, next) => {
     const { address, date } = req.body;
@@ -14,6 +15,9 @@ export const createVisit = async (req, res, next) => {
                 message: "Please provide all required fields"
             });
         }
+
+        const userPlan = await UserPlan.findOne({ user: client })
+            .populate("plan addOnServices")
 
         const existingActiveVisit = await Visit.findOne({
             client,
@@ -36,7 +40,7 @@ export const createVisit = async (req, res, next) => {
             return res.status(400).json({
                 status: false,
                 message: "You have not made any payment yet. Please make a payment first."
-            }); 
+            });
         }
 
         let date1 = new Date(isPaid[0].createdAt);
@@ -61,14 +65,14 @@ export const createVisit = async (req, res, next) => {
             return res.status(400).json({
                 status: false,
                 message: `Your payment is ${isPaid[0].status} . Please wait for it to be payment or completed before creating a visit.`
-            });     
+            });
         }
 
-        if(currentDate > date1) {
+        if (currentDate > date1) {
             return res.status(400).json({
                 status: false,
                 message: "Your payment has expired. Please make a new payment."
-            });     
+            });
         }
 
         const visitData = await createVisitService(
@@ -76,7 +80,8 @@ export const createVisit = async (req, res, next) => {
                 address,
                 date,
                 isPaid: isPaid?.status === "completed",
-                status: "pending"
+                status: "pending",
+                userPlan
             },
             client,
             res
@@ -85,7 +90,7 @@ export const createVisit = async (req, res, next) => {
         return res.status(201).json({
             status: true,
             message: "Visit created successfully",
-            data: visitData
+            data: { visitData, userPlan }
         });
     } catch (error) {
         next(error);
@@ -154,6 +159,14 @@ export const getAllVisitForSpecificClient = async (req, res, next) => {
 
         // Main query to get visits
         let visitsQuery = Visit.find(filterQuery)
+            .populate({
+                path: "userPlan",
+                select: "plan addOnServices",
+                populate: [
+                    { path: "plan", select: "name" },
+                    { path: "addOnServices", select: "name" }
+                ]
+            })
             .skip(skip)
             .limit(limit)
             .lean(); // Convert to plain JS object
@@ -302,6 +315,14 @@ export const getNextVisit = async (req, res, next) => {
         const visit =
             (await Visit.findOne({ client, date: { $gte: new Date() } })
                 .populate("client staff")
+                .populate({
+                    path: "userPlan",
+                    select: "plan addOnServices",
+                    populate: [
+                        { path: "plan", select: "name" },
+                        { path: "addOnServices", select: "name" }
+                    ]
+                })
                 .sort({ date: 1 })
                 .select("-createdAt -updatedAt -__v")
                 .lean())
@@ -350,7 +371,14 @@ export const getAllIssuesCount = async (req, res, next) => {
     const client = req.user._id;
 
     try {
-        const visits = await Visit.find({ client }).populate("issues").lean();
+        const visits = await Visit.find({ client }).populate("issues").populate({
+            path: "userPlan",
+            select: "plan addOnServices",
+            populate: [
+                { path: "plan", select: "name" },
+                { path: "addOnServices", select: "name" }
+            ]
+        }).lean();
 
         if (!visits || visits.length === 0) {
             return res.status(404).json({

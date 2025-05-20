@@ -3,6 +3,7 @@ import { Notification } from "../model/notfication.model.js";
 import { createVisitService, getCompletedVisitsWithIssuesService, getPastVisitsService, getUpcomingVisitsService, getVisits, getVisitsPagination, updateVisitService } from "../services/visit.services.js";
 import mongoose from "mongoose";
 import { User } from "../model/user.model.js";
+import { UserPlan } from "../model/userPlan.models.js";
 
 //admin creates a visit for a client
 export const createVisit = async (req, res, next) => {
@@ -125,7 +126,14 @@ export const getAdminAllVisit = async (req, res, next) => {
     try {
         // Fetch all visits with population
         const allVisits = await Visit.find()
-            .populate({ path: "client staff", select: "fullname email" }).sort({ createdAt: -1 })
+            .populate({ path: "client staff", select: "fullname email" }).populate({
+                path: "userPlan",
+                select: "plan addOnServices",
+                populate: [
+                    { path: "plan", select: "name" },
+                    { path: "addOnServices", select: "name" }
+                ]
+            }).sort({ createdAt: -1 })
 
         // Filter by search and status
         let filtered = allVisits.filter(v => {
@@ -192,7 +200,14 @@ export const getConfirmedVisits = async (req, res, next) => {
 //admin gets all pending visits for
 export const getAllPendingVisits = async (req, res, next) => {
     try {
-        const response = await Visit.find({ status: "pending" })
+        const response = await Visit.find({ status: "pending" }).populate({
+            path: "userPlan",
+            select: "plan addOnServices",
+            populate: [
+                { path: "plan", select: "name" },
+                { path: "addOnServices", select: "name" }
+            ]
+        })
         return res.status(200).json({
             status: true,
             message: "Pending visits fetched successfully",
@@ -329,7 +344,14 @@ export const updateVisit = async (req, res, next) => {
                 new: true,
                 runValidators: true
             }
-        ).populate('client', 'email').populate('staff', 'email');
+        ).populate('client', 'email').populate('staff', 'email').populate({
+            path: "userPlan",
+            select: "plan addOnServices",
+            populate: [
+                { path: "plan", select: "name" },
+                { path: "addOnServices", select: "name" }
+            ]
+        })
 
         if (!updatedVisit) {
             return res.status(404).json({
@@ -418,6 +440,14 @@ export const getSpecificVisit = async (req, res, next) => {
     try {
         const visit = await Visit.findById(id)
             .populate({ path: "client staff", select: "-sessions -refreshToken" })
+            .populate({
+                path: "userPlan",
+                select: "plan addOnServices",
+                populate: [
+                    { path: "plan", select: "name" },
+                    { path: "addOnServices", select: "name" }
+                ]
+            })
             .sort({ createdAt: -1 })
             .lean()
         if (!visit) {

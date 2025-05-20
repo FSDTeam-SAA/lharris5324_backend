@@ -7,7 +7,14 @@ export const getVisitById = async (req, res, next) => {
   try {
     const visit =
       mongoose.Types.ObjectId.isValid(id) &&
-      (await Visit.findById(id).select('-createdAt -updatedAt -__v').lean())
+      (await Visit.findById(id).populate({
+        path: "userPlan",
+        select: "plan addOnServices",
+        populate: [
+          { path: "plan", select: "name" },
+          { path: "addOnServices", select: "name" }
+        ]
+      }).select('-createdAt -updatedAt -__v').lean())
 
     if (!visit) {
       return res.status(404).json({
@@ -88,6 +95,7 @@ export const activeVisitClientInfo = async (req, res, next) => {
     const activeVisits = await Visit.find({ status: 'confirmed' })
       .populate('client', 'fullname email')
       .populate('staff', 'fullname')
+      .populate("userPlan", "plan addOnServices")
       .skip(skip)
       .limit(limit)
       .lean()
