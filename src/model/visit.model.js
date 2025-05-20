@@ -84,7 +84,11 @@ const visitSchema = new Schema({
     addsOnService: {
         type: Schema.Types.ObjectId,
         ref: 'AddsOnService'
-    }
+    },
+    userPlan: {
+        type: Schema.Types.ObjectId,
+        ref: 'UserPlan',
+    },
 
 }, { timestamps: true })
 

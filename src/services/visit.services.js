@@ -39,9 +39,17 @@ export const getAllVisitsService = async (page, limit, status, res) => {
 
         const total = await Visit.countDocuments(query);
 
-        const visits = await Visit.find(query) 
-            .populate("client", "name email")   
+        const visits = await Visit.find(query)
+            .populate("client", "name email")
             .populate("staff", "name position")
+            .populate({
+                path: "userPlan",
+                select: "plan addOnServices",
+                populate: [
+                    { path: "plan", select: "name" },
+                    { path: "addOnServices", select: "name" }
+                ]
+            })
             .sort({ createdAt: -1 })
             .skip((page - 1) * limit)
             .limit(limit)
@@ -66,7 +74,14 @@ export const getAllVisitsService = async (page, limit, status, res) => {
 //get visits by status
 export const getVisits = async (client, status, res) => {
 
-    const visits = await Visit.find({ client, status }).populate({ path: "client staff", select: "fullname email" }).sort({ createdAt: -1}).lean()
+    const visits = await Visit.find({ client, status }).populate({ path: "client staff", select: "fullname email" }).populate({
+        path: "userPlan",
+        select: "plan addOnServices",
+        populate: [
+            { path: "plan", select: "name" },
+            { path: "addOnServices", select: "name" }
+        ]
+    }).sort({ createdAt: -1 }).lean()
 
     return res.status(200).json({
         status: true,
@@ -82,6 +97,14 @@ export const getVisitsPagination = async (page, limit, client, status, res) => {
         status
     })
         .populate("client staff")
+        .populate({
+            path: "userPlan",
+            select: "plan addOnServices",
+            populate: [
+                { path: "plan", select: "name" },
+                { path: "addOnServices", select: "name" }
+            ]
+        })
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(Number(limit))
@@ -114,6 +137,14 @@ export const getCompletedVisitsWithIssuesService = async (page, limit, client, r
 
     const visits = await Visit.find(query)
         .populate("client staff")
+        .populate({
+            path: "userPlan",
+            select: "plan addOnServices",
+            populate: [
+                { path: "plan", select: "name" },
+                { path: "addOnServices", select: "name" }
+            ]
+        })
         .sort({ date: 1 })
         .skip((page - 1) * limit)
         .limit(Number(limit))
@@ -148,6 +179,14 @@ export const getVisitsByTypeService = async (page, limit, client, type, res) => 
 
     const visits = await Visit.find(query)
         .populate("client staff")
+        .populate({
+            path: "userPlan",
+            select: "plan addOnServices",
+            populate: [
+                { path: "plan", select: "name" },
+                { path: "addOnServices", select: "name" }
+            ]
+        })
         .sort({ date: 1 })
         .skip((page - 1) * limit)
         .limit(Number(limit))
@@ -176,6 +215,14 @@ export const getPastVisitsService = async (page, limit, client, res) => {
 
     const visits = await Visit.find(query)
         .populate({ path: "client staff", select: "fullname email" })
+        .populate({
+            path: "userPlan",
+            select: "plan addOnServices",
+            populate: [
+                { path: "plan", select: "name" },
+                { path: "addOnServices", select: "name" }
+            ]
+        })
         .sort({ date: -1 })
         .skip((page - 1) * limit)
         .limit(Number(limit))
@@ -205,6 +252,14 @@ export const getUpcomingVisitsService = async (page, limit, client) => {
 
         const visits = await Visit.find(query)
             .populate({ path: "client", select: "-sessions -refreshToken" })
+            .populate({
+                path: "userPlan",
+                select: "plan addOnServices",
+                populate: [
+                    { path: "plan", select: "name" },
+                    { path: "addOnServices", select: "name" }
+                ]
+            })
             .sort({ date: 1 })
             .skip((page - 1) * limit)
             .limit(Number(limit));
@@ -264,9 +319,16 @@ export const updateVisitService = async (updateData, id) => {
             runValidators: true,
             select: "-createdAt -updatedAt -__v"
         }
-    ).populate([
+    ).populate({
+        path: "userPlan",
+        select: "plan addOnServices",
+        populate: [
+            { path: "plan", select: "name" },
+            { path: "addOnServices", select: "name" }
+        ]
+    }).populate([
         { path: "client", select: "-sessions -refreshToken" },
-        { path: "staff", select: "-sessions -refreshToken" }
+        { path: "staff", select: "-sessions -refreshToken" },
     ]);
 
     if (!updatedVisit) {
