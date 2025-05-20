@@ -32,6 +32,13 @@ export const createVisit = async (req, res, next) => {
             .sort({ createdAt: -1 })
             .lean();
 
+        if (!isPaid || isPaid.length === 0) {
+            return res.status(400).json({
+                status: false,
+                message: "You have not made any payment yet. Please make a payment first."
+            }); 
+        }
+
         let date1 = new Date(isPaid[0].createdAt);
         let currentDate = new Date();
 
@@ -50,10 +57,10 @@ export const createVisit = async (req, res, next) => {
             });
         }
 
-        if (isPaid[0].status === "pending") {
+        if (isPaid[0].status === "pending" || isPaid[0].status === "failed" || isPaid[0].status === "refunded") {
             return res.status(400).json({
                 status: false,
-                message: "Your payment is pending. Please wait for it to be completed before creating a visit."
+                message: `Your payment is ${isPaid[0].status} . Please wait for it to be payment or completed before creating a visit.`
             });     
         }
 
