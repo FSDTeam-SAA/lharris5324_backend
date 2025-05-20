@@ -29,6 +29,13 @@ export const createVisit = async (req, res, next) => {
 
         const isPaid = await Payment.findOne({ user: client }).select("status");
 
+        if (!isPaid || !isPaid.status !== "completed") {
+            return res.status(400).json({
+                status: false,
+                message: "Please make a payment before creating a visit."
+            });
+        }
+
         const visitData = await createVisitService(
             {
                 address,
