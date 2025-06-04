@@ -55,10 +55,26 @@ export const createVisit = async (req, res, next) => {
         }
 
         if (!isPaid || (isPaid[0].status === "completed" && isPaid[0].plan.pack === "per-patrol")) {
-            return res.status(400).json({
-                status: false,
-                message: "Your payment has expired. Please make a new payment."
+
+            // Now check if a booking already exists for today
+            const existingBooking = await Visit.findOne({
+                client: req.user._id,
+                createdAt: { $gte: date1, }
             });
+
+            if (existingBooking) {
+                return res.status(400).json({
+                    status: false,
+                    message: "You have already made a booking today with your per-patrol plan. Please make a new payment."
+                });
+            }
+        } else {
+            if (currentDate > date1) {
+                return res.status(400).json({
+                    status: false,
+                    message: "Your payment has expired. Please make a new payment."
+                });
+            }
         }
 
         if (isPaid[0].status === "pending" || isPaid[0].status === "failed" || isPaid[0].status === "refunded") {
@@ -68,12 +84,7 @@ export const createVisit = async (req, res, next) => {
             });
         }
 
-        if (currentDate > date1) {
-            return res.status(400).json({
-                status: false,
-                message: "Your payment has expired. Please make a new payment."
-            });
-        }
+
 
         const visitData = await createVisitService(
             {
