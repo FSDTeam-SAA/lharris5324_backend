@@ -57,8 +57,8 @@ export const createVisit = async (req, res, next) => {
         if (!isPaid || (isPaid[0].status === "completed" && isPaid[0].plan.pack === "per-patrol")) {
 
             // Now check if a booking already exists for today
-            const existingBooking = await Booking.findOne({
-                user: req.user._id,
+            const existingBooking = await Visit.findOne({
+                client: req.user._id,
                 createdAt: { $gte: date1, }
             });
 
